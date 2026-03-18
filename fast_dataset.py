@@ -9,6 +9,7 @@ import bisect
 import torch
 from torch.utils.data import Dataset, DataLoader
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ChunkedTensorDataset(Dataset):
     """
@@ -107,8 +108,8 @@ start = time.time()
 dataset, loader = build_dataloader(
     data_dir="Data/Processed_unlabeled",
     pattern="X_unlabeled_root_01_*.pt",   # only root 1
-    batch_size=256,
-    shuffle=True,
+    batch_size=64,
+    shuffle=False,
     num_workers=0,
     pin_memory=True,
 )
@@ -118,5 +119,6 @@ print("DataLoader built.")
 
 for i, batch in enumerate(loader):
     print(i, batch.shape, batch.dtype)
+    batch = batch.to(DEVICE)
     if i == 4:
         break

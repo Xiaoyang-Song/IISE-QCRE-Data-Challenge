@@ -1,7 +1,7 @@
 
 
-python data_getter.py --roots 1
-python data_getter.py --roots 2
-python data_getter.py --roots 3
-python data_getter.py --roots 4
-python data_getter.py --roots 5
+# python fast_data_process.py --root 1 --chunk_size 256 --fp16
+python fast_data_process.py --root 2 --chunk_size 256 --fp16
+python fast_data_process.py --root 3 --chunk_size 256 --fp16
+python fast_data_process.py --root 4 --chunk_size 256 --fp16
+python fast_data_process.py --root 5 --chunk_size 256 --fp16
