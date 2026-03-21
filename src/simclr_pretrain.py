@@ -10,6 +10,8 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
 
+from cropped_data_loader import *
+from tqdm import tqdm
 
 # ============================================================
 # Config
@@ -43,7 +45,7 @@ class TrainConfig:
     save_dir: str = "./simclr_runs"
     run_name: str = "simclr_resnet18"
     log_interval: int = 20
-    save_every: int = 5
+    save_every: int = 1
     resume_path: str = ""   # path to checkpoint if resuming
 
 
@@ -212,6 +214,7 @@ class SimCLRModel(nn.Module):
             feat_dim = backbone.fc.in_features
         else:
             raise ValueError(f"Unsupported backbone: {backbone_name}")
+        print("Feature Dimension: ", feat_dim)
 
         # remove classification head
         backbone.fc = nn.Identity()
@@ -256,7 +259,7 @@ class NTXentLoss(nn.Module):
 
         # mask self-similarity
         mask = torch.eye(2 * batch_size, device=device, dtype=torch.bool)
-        sim = sim.masked_fill(mask, -1e9)
+        sim = sim.masked_fill(mask, torch.finfo(sim.dtype).min)
 
         # positive pairs:
         # for i in [0..B-1], positive is i+B
@@ -325,7 +328,11 @@ def train_one_epoch(model, loader, criterion, optimizer, scaler, device, epoch, 
     running_loss = 0.0
     start_time = time.time()
 
-    for step, (x1, x2) in enumerate(loader):
+    # print("Testing loader speed... (Comment out during actual training)")
+    # for step, batch in enumerate(tqdm(loader)):
+    #     print(step)
+
+    for step, (x1, x2) in enumerate(tqdm(loader)):
         x1 = x1.to(device, non_blocking=True)
         x2 = x2.to(device, non_blocking=True)
 
@@ -362,7 +369,7 @@ def train_one_epoch(model, loader, criterion, optimizer, scaler, device, epoch, 
 # Main Train Function
 # ============================================================
 
-def train_simclr(base_dataset, cfg: TrainConfig):
+def train_simclr(train_loader, cfg: TrainConfig):
     set_seed(cfg.seed)
 
     run_dir = os.path.join(cfg.save_dir, cfg.run_name)
@@ -376,18 +383,7 @@ def train_simclr(base_dataset, cfg: TrainConfig):
     write_csv_log_header(csv_log_path)
 
     # dataset / loader
-    simclr_transform = SimCLRTransform(image_size=cfg.image_size)
-    train_dataset = SimCLRDatasetWrapper(base_dataset, simclr_transform)
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=cfg.batch_size,
-        shuffle=True,
-        num_workers=cfg.num_workers,
-        pin_memory=True,
-        drop_last=True,   # important for contrastive learning
-        persistent_workers=(cfg.num_workers > 0),
-    )
+    # train_dataset = SimCLRDatasetWrapper(base_dataset, simclr_transform)
 
     # model
     model = SimCLRModel(
@@ -403,7 +399,7 @@ def train_simclr(base_dataset, cfg: TrainConfig):
         lr=cfg.lr,
         weight_decay=cfg.weight_decay
     )
-    scheduler = build_cosine_scheduler(optimizer, total_epochs=cfg.epochs, warmup_epochs=10)
+    scheduler = build_cosine_scheduler(optimizer, total_epochs=cfg.epochs, warmup_epochs=1)
     scaler = torch.cuda.amp.GradScaler(enabled=(cfg.use_amp and cfg.device.startswith("cuda")))
 
     start_epoch = 0
@@ -517,37 +513,35 @@ def extract_features(model, loader, device="cuda"):
 # ============================================================
 
 if __name__ == "__main__":
-    # --------------------------------------------------------
-    # Replace this with your actual dataset
-    # Example:
-    # from my_dataset import MyImageDataset
-    # base_dataset = MyImageDataset(...)
-    # --------------------------------------------------------
-
-    class DummyDataset(Dataset):
-        def __init__(self, n=1000):
-            self.n = n
-
-        def __len__(self):
-            return self.n
-
-        def __getitem__(self, idx):
-            # fake image in [0,1]
-            img = torch.rand(3, 224, 224)
-            return img
-
-    base_dataset = DummyDataset(n=2000)
 
     cfg = TrainConfig(
         batch_size=64,
-        epochs=50,
+        epochs=10,
         lr=3e-4,
         backbone_name="resnet18",
         pretrained=True,
         projection_dim=128,
-        hidden_dim=512,
+        hidden_dim=128,
         save_dir="./simclr_runs",
-        run_name="simclr_example"
+        run_name="simclr_example",
+        num_workers=0
     )
 
-    train_simclr(base_dataset, cfg)
+    start = time.time()
+    simclr_transform = SimCLRTransform(image_size=cfg.image_size)
+
+    dataset, loader = build_dataloader(
+        data_dir="Data/cropped/chunked",
+        pattern="X_unlabeled_root_01_*.pt",   # only root 1
+        batch_size=64,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=True,
+        transform=simclr_transform,
+    )
+
+    end = time.time()
+    print(f"Total data loading time: {end - start:.3f} s")
+    print("DataLoader built.")
+
+    train_simclr(loader, cfg)

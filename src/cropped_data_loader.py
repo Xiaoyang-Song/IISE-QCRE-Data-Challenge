@@ -72,8 +72,10 @@ class ChunkedTensorDataset(Dataset):
         chunk = self._load_chunk(chunk_idx)
         x = chunk[local_idx]   # [3,224,224], float32
 
+        # used specifically for simclr
         if self.transform is not None:
-            x = self.transform(x)
+            x1, x2 = self.transform(x)
+            return x1, x2
 
         return x
 
@@ -107,23 +109,26 @@ def build_dataloader(
     return dataset, loader
 
 
-start = time.time()
 
-dataset, loader = build_dataloader(
-    data_dir="Data/cropped/chunked",
-    pattern="X_unlabeled_root_01_*.pt",   # only root 1
-    batch_size=64,
-    shuffle=False,
-    num_workers=0,
-    pin_memory=True,
-)
+if __name__ == "__main__":
 
-end = time.time()
-print(f"Total data loading time: {end - start:.3f} s")
-print("DataLoader built.")
+    start = time.time()
 
-for i, batch in enumerate(loader):
-    print(i, batch.shape, batch.dtype)
-    batch = batch.to(DEVICE, non_blocking=True)
-    if i == 4:
-        break
+    dataset, loader = build_dataloader(
+        data_dir="Data/cropped/chunked",
+        pattern="X_unlabeled_root_01_*.pt",   # only root 1
+        batch_size=64,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=True,
+    )
+
+    end = time.time()
+    print(f"Total data loading time: {end - start:.3f} s")
+    print("DataLoader built.")
+
+    for i, batch in enumerate(loader):
+        print(i, batch.shape, batch.dtype)
+        batch = batch.to(DEVICE, non_blocking=True)
+        if i == 4:
+            break
