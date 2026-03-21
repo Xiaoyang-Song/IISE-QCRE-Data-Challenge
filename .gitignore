@@ -2,3 +2,8 @@ Data/
 *.pyc
 *.__pycache__
 
+# checkpoint
+epoch_*.pt
+latest.pt
+
+best.pt
