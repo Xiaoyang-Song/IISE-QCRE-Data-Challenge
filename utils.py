@@ -84,6 +84,13 @@ def image2crops(img, **params):
     
     return outputs
 
+def image2crops_with_anchors(img, anchors):
+    outputs = []
+    for anchor in anchors:
+        crop = crop_image(img, *anchor)
+        outputs.append(crop)
+    
+    return outputs
 
 if __name__ == '__main__':
     

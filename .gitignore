@@ -7,3 +7,4 @@ epoch_*.pt
 latest.pt
 
 best.pt
+best_defect_attention_model.pt
