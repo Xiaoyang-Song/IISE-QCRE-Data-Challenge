@@ -393,6 +393,8 @@ def train_simclr(train_loader, cfg: TrainConfig):
         hidden_dim=cfg.hidden_dim
     ).to(cfg.device)
 
+    # model = torch.compile(model)
+
     criterion = NTXentLoss(temperature=cfg.temperature)
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -524,7 +526,7 @@ if __name__ == "__main__":
         hidden_dim=128,
         save_dir="./simclr_runs",
         run_name="simclr_example",
-        num_workers=0
+        num_workers=1
     )
 
     start = time.time()
@@ -532,10 +534,11 @@ if __name__ == "__main__":
 
     dataset, loader = build_dataloader(
         data_dir="Data/cropped/chunked",
-        pattern="X_unlabeled_root_01_*.pt",   # only root 1
+        # pattern="X_unlabeled_root_01_*.pt",   # only root 1
+        pattern="X_unlabeled_root_*.pt",   # only root 1
         batch_size=64,
         shuffle=False,
-        num_workers=0,
+        num_workers=1,
         pin_memory=True,
         transform=simclr_transform,
     )

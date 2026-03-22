@@ -8,7 +8,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
 #SBATCH --mem-per-gpu=16GB
-#SBATCH --time=30:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=/scratch/sunwbgt_root/sunwbgt98/xysong/IISE-QCRE-Data-Challenge/out.log
 
 python src/simclr_pretrain.py 
